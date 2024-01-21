@@ -21,7 +21,7 @@ fn next(self: *Self) u8 {
 
 pub inline fn good(self: *Self) bool {
     self.consumeWhitespace();
-    return self.index < self.buf.len and self.peek(0) != '}';
+    return self.index < self.buf.len and self.peek(0) != '}' and self.peek(0) != ']';
 }
 
 pub fn nextField(self: *Self) !Field {
@@ -41,7 +41,7 @@ pub fn nextField(self: *Self) !Field {
     return .{ .name = field_ident, .value = value };
 }
 
-fn consumeValue(self: *Self) anyerror!*Value {
+pub fn consumeValue(self: *Self) anyerror!*Value {
     self.consumeWhitespace();
 
     const ptr = try self.allocator.create(Value);
@@ -53,7 +53,10 @@ fn consumeValue(self: *Self) anyerror!*Value {
         '{' => try self.consumeStruct(),
         '[' => try self.consumeArray(),
 
-        else => return error.UnexpectedToken,
+        else => |c| {
+            std.log.warn("Found {c} at {d}\n", .{ c, self.index });
+            return error.UnexpectedToken;
+        },
     };
 
     return ptr;

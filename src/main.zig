@@ -22,12 +22,12 @@ pub fn main() !void {
         \\      "Hello",
         \\  ],
         \\}
+        // \\[
+        // \\  45,
+        // \\  "44",
+        // \\]
     );
     defer tree.deinit();
 
     std.debug.print("{any}\n", .{tree.fields});
-
-    std.debug.print("LAST ELEMENT ENTRIES:\n", .{});
-    for (tree.fields[tree.fields.len - 1].value.array) |value|
-        std.debug.print("{any}\n", .{value});
 }
