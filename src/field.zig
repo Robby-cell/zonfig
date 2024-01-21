@@ -51,12 +51,12 @@ pub const Value = union(enum) {
         };
     }
 
-    pub fn deinit(self: *const Value, allocator: Allocator) void {
+    pub fn deinit(self: *Value, allocator: Allocator) void {
         switch (self.*) {
             .string => |s| {
                 allocator.free(s);
             },
-            .@"struct" => |s| {
+            .@"struct" => |*s| {
                 s.deinit(allocator);
             },
             .array => |a| {
@@ -73,33 +73,46 @@ pub const Value = union(enum) {
 };
 
 pub const Struct = struct {
-    fields: []StructField,
+    fields: std.StringHashMap(*Value),
 
     pub const StructField = struct {
         name: []const u8,
-        value: ?*Value,
+        value: *Value,
 
         pub fn deinit(self: *const @This(), allocator: Allocator) void {
-            if (self.value) |value| {
-                value.deinit(allocator);
-                allocator.destroy(value);
-            }
+            self.value.deinit(allocator);
+            allocator.destroy(self.value);
         }
     };
 
-    pub fn init(fields: []StructField) Struct {
+    pub fn init(allocator: Allocator, fields: []StructField) anyerror!Struct {
+        var map = std.StringHashMap(*Value).init(allocator);
+        errdefer map.deinit();
+        for (fields) |field| {
+            try map.put(field.name, field.value);
+        }
         return .{
-            .fields = fields,
+            .fields = map,
         };
     }
 
-    pub fn deinit(self: *const Struct, allocator: Allocator) void {
-        for (self.fields) |*field| {
-            if (field.value) |field_value| {
-                field_value.deinit(allocator);
-                allocator.destroy(field_value);
-            }
+    pub fn at(self: *const Struct, field: []const u8) ?*Value {
+        return self.fields.get(field);
+    }
+
+    pub fn deinit(self: *Struct, allocator: Allocator) void {
+        var iter = self.fields.iterator();
+        while (iter.next()) |f| {
+            f.value_ptr.*.deinit(allocator);
+            allocator.destroy(f.value_ptr.*);
         }
-        allocator.free(self.fields);
+        self.fields.deinit();
+        // for (self.fields) |*field| {
+        //     if (field.value) |field_value| {
+        //         field_value.deinit(allocator);
+        //         allocator.destroy(field_value);
+        //     }
+        // }
+        // allocator.free(self.fields);
     }
 };

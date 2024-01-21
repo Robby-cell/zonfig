@@ -27,8 +27,7 @@ pub inline fn good(self: *Self) bool {
 pub fn nextField(self: *Self) !Field {
     const field_ident = try self.consumeIdent();
 
-    self.consumeWhitespace();
-    try self.consume('=');
+    try self.desire('=');
 
     const value = try self.consumeValue();
     errdefer {
@@ -36,7 +35,7 @@ pub fn nextField(self: *Self) !Field {
         self.allocator.destroy(value);
     }
 
-    try self.consume(',');
+    try self.desire(',');
 
     return .{ .name = field_ident, .value = value };
 }
@@ -84,10 +83,10 @@ fn consumeArray(self: *Self) anyerror!Value {
             self.allocator.destroy(value);
         }
 
-        self.consumeWhitespace();
-        try self.consume(',');
+        try self.desire(',');
 
         try arr.append(value);
+
         self.consumeWhitespace();
     }
     try self.consume(']');
@@ -112,8 +111,7 @@ fn consumeStruct(self: *Self) !Value {
     while (self.peek(0) != '}') {
         const name = try self.consumeIdent();
 
-        self.consumeWhitespace();
-        try self.consume('=');
+        try self.desire('=');
 
         const value = try self.consumeValue();
         errdefer {
@@ -121,8 +119,7 @@ fn consumeStruct(self: *Self) !Value {
             self.allocator.destroy(value);
         }
 
-        self.consumeWhitespace();
-        try self.consume(',');
+        try self.desire(',');
 
         const field: Struct.StructField = .{ .name = name, .value = value };
         try fields.append(field);
@@ -131,8 +128,7 @@ fn consumeStruct(self: *Self) !Value {
     }
     try self.consume('}');
 
-    const f = try self.allocator.dupe(Struct.StructField, fields.items);
-    const s = Struct.init(f);
+    const s = try Struct.init(self.allocator, fields.items);
 
     return Value.structValue(s);
 }
@@ -223,6 +219,11 @@ fn consumeWhitespace(self: *Self) void {
         }
         _ = self.next();
     }
+}
+
+pub fn desire(self: *Self, wants: u8) !void {
+    self.consumeWhitespace();
+    return self.consume(wants);
 }
 
 /// Consume the expected character or return error if its not found

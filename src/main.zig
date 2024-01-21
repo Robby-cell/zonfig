@@ -28,6 +28,8 @@ pub fn main() !void {
         // \\]
     );
     defer tree.deinit();
+    var iter = tree.fields.@"struct".fields.iterator();
 
-    std.debug.print("{any}\n", .{tree.fields});
+    while (iter.next()) |pair|
+        std.debug.print("{s} = {any}\n", .{ pair.key_ptr.*, pair.value_ptr.* });
 }
