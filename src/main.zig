@@ -38,7 +38,7 @@ pub fn main() !void {
     // while (iter.next()) |pair|
     //     std.debug.print("{s} = {any}\n", .{ pair.key_ptr.*, pair.value_ptr.* });
 
-    for (tree.fields.array) |val| {
+    for (tree.fields.array.inners.items) |val| {
         std.debug.print("{any}\n", .{val});
     }
 }

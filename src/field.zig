@@ -19,7 +19,18 @@ pub const Value = union(enum) {
     float: f64,
 
     @"struct": Struct,
-    array: []*Value,
+    array: Array,
+
+    pub fn field(self: *const Value, field_name: []const u8) ?*Value {
+        return self.@"struct".at(field_name);
+    }
+
+    pub fn at(self: *const Value, index: usize) ?*Value {
+        return if (self.array.inners.items.len > index)
+            self.array.inners.items[index]
+        else
+            null;
+    }
 
     pub fn stringValue(str: String) Value {
         return .{
@@ -45,7 +56,7 @@ pub const Value = union(enum) {
         };
     }
 
-    pub fn arrayValue(a: []*Value) Value {
+    pub fn arrayValue(a: Array) Value {
         return .{
             .array = a,
         };
@@ -59,16 +70,30 @@ pub const Value = union(enum) {
             .@"struct" => |*s| {
                 s.deinit(allocator);
             },
-            .array => |a| {
-                for (a) |value| {
-                    value.deinit(allocator);
-                    allocator.destroy(value);
-                }
-                allocator.free(a);
+            .array => |*a| {
+                a.deinit(allocator);
             },
 
             else => {},
         }
+    }
+};
+
+pub const Array = struct {
+    inners: std.ArrayList(*Value),
+
+    pub fn init(items: std.ArrayList(*Value)) Array {
+        return .{
+            .inners = items,
+        };
+    }
+
+    pub fn deinit(self: *Array, allocator: Allocator) void {
+        for (self.inners.items) |item| {
+            item.deinit(allocator);
+            allocator.destroy(item);
+        }
+        self.inners.deinit();
     }
 };
 

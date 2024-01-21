@@ -4,6 +4,7 @@ const Allocator = std.mem.Allocator;
 const Field = @import("./field.zig").Field;
 const Value = @import("./field.zig").Value;
 const Struct = @import("./field.zig").Struct;
+const Array = @import("./field.zig").Array;
 
 const Self = @This();
 
@@ -66,14 +67,12 @@ fn consumeArray(self: *Self) anyerror!Value {
     self.consumeWhitespace();
 
     var arr = std.ArrayList(*Value).init(self.allocator);
-    defer {
-        arr.deinit();
-    }
     errdefer {
         for (arr.items) |value| {
             value.deinit(self.allocator);
             self.allocator.destroy(value);
         }
+        arr.deinit();
     }
 
     while (self.peek(0) != ']') {
@@ -91,9 +90,7 @@ fn consumeArray(self: *Self) anyerror!Value {
     }
     try self.consume(']');
 
-    const items = try self.allocator.dupe(*Value, arr.items);
-
-    return Value.arrayValue(items);
+    return Value.arrayValue(Array.init(arr));
 }
 
 fn consumeStruct(self: *Self) !Value {

@@ -14,8 +14,8 @@ test "struct tests" {
     );
     defer tree.deinit();
 
-    try expect(tree.fields.@"struct".at("foo").?.int == 67);
-    try expect(tree.fields.@"struct".at("bar").?.array[1].int == 34);
+    try expect(tree.field("foo").?.int == 67);
+    try expect(tree.field("bar").?.array.inners.items[1].int == 34);
 }
 
 test "array tests" {
@@ -35,9 +35,9 @@ test "array tests" {
     defer tree.deinit();
 
     for (0..3) |i| {
-        try expect(tree.fields.array[i].int == i + 1);
+        try expect(tree.at(i).?.int == i + 1);
     }
-    try expect(tree.fields.array[3].@"struct".at("foo").?.int == 4);
+    try expect(tree.at(3).?.field("foo").?.int == 4);
 }
 
 test "strings in structs" {
@@ -54,5 +54,5 @@ test "strings in structs" {
     try expect(std.mem.eql(u8,
         \\Hello world
         \\new line
-    , tree.fields.@"struct".at("foo").?.string));
+    , tree.field("foo").?.string));
 }
