@@ -19,6 +19,7 @@ pub const Value = union(enum) {
     float: f64,
 
     @"struct": Struct,
+    array: []*Value,
 
     pub fn stringValue(str: String) Value {
         return .{
@@ -44,13 +45,26 @@ pub const Value = union(enum) {
         };
     }
 
+    pub fn arrayValue(a: []*Value) Value {
+        return .{
+            .array = a,
+        };
+    }
+
     pub fn deinit(self: *const Value, allocator: Allocator) void {
         switch (self.*) {
             .string => |s| {
                 allocator.free(s);
             },
-            .@"struct" => |*s| {
+            .@"struct" => |s| {
                 s.deinit(allocator);
+            },
+            .array => |a| {
+                for (a) |value| {
+                    value.deinit(allocator);
+                    allocator.destroy(value);
+                }
+                allocator.free(a);
             },
 
             else => {},
@@ -83,7 +97,9 @@ pub const Struct = struct {
         for (self.fields) |*field| {
             if (field.value) |field_value| {
                 field_value.deinit(allocator);
+                allocator.destroy(field_value);
             }
         }
+        allocator.free(self.fields);
     }
 };

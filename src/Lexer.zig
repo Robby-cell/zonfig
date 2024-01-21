@@ -19,8 +19,9 @@ fn next(self: *Self) u8 {
     return self.buf[self.index];
 }
 
-pub fn good(self: *const Self) bool {
-    return self.index < self.buf.len;
+pub inline fn good(self: *Self) bool {
+    self.consumeWhitespace();
+    return self.index < self.buf.len and self.peek(0) != '}';
 }
 
 pub fn nextField(self: *Self) !Field {
@@ -30,31 +31,67 @@ pub fn nextField(self: *Self) !Field {
     try self.consume('=');
 
     const value = try self.consumeValue();
-    errdefer value.deinit(self.allocator);
+    errdefer {
+        value.deinit(self.allocator);
+        self.allocator.destroy(value);
+    }
 
     try self.consume(',');
 
-    const ptr = try self.allocator.create(Value);
-    ptr.* = value;
-    return .{ .name = field_ident, .value = ptr };
+    return .{ .name = field_ident, .value = value };
 }
 
-fn consumeValue(self: *Self) anyerror!Value {
+fn consumeValue(self: *Self) anyerror!*Value {
     self.consumeWhitespace();
 
-    return switch (self.peek(0)) {
+    const ptr = try self.allocator.create(Value);
+    errdefer self.allocator.destroy(ptr);
+
+    ptr.* = switch (self.peek(0)) {
         '0'...'9' => try self.consumeNumber(),
         '"' => try self.consumeString(),
         '{' => try self.consumeStruct(),
         '[' => try self.consumeArray(),
 
-        else => error.UnexpectedToken,
+        else => return error.UnexpectedToken,
     };
+
+    return ptr;
 }
 
 fn consumeArray(self: *Self) anyerror!Value {
-    _ = self;
-    @panic("Unimplemented");
+    try self.consume('[');
+    self.consumeWhitespace();
+
+    var arr = std.ArrayList(*Value).init(self.allocator);
+    defer {
+        arr.deinit();
+    }
+    errdefer {
+        for (arr.items) |value| {
+            value.deinit(self.allocator);
+            self.allocator.destroy(value);
+        }
+    }
+
+    while (self.peek(0) != ']') {
+        const value = try self.consumeValue();
+        errdefer {
+            value.deinit(self.allocator);
+            self.allocator.destroy(value);
+        }
+
+        self.consumeWhitespace();
+        try self.consume(',');
+
+        try arr.append(value);
+        self.consumeWhitespace();
+    }
+    try self.consume(']');
+
+    const items = try self.allocator.dupe(*Value, arr.items);
+
+    return Value.arrayValue(items);
 }
 
 fn consumeStruct(self: *Self) !Value {
@@ -62,11 +99,11 @@ fn consumeStruct(self: *Self) !Value {
 
     self.consumeWhitespace();
     var fields = std.ArrayList(Struct.StructField).init(self.allocator);
+    defer fields.deinit();
     errdefer {
         for (fields.items) |*item| {
             item.deinit(self.allocator);
         }
-        fields.deinit();
     }
 
     while (self.peek(0) != '}') {
@@ -75,24 +112,31 @@ fn consumeStruct(self: *Self) !Value {
         self.consumeWhitespace();
         try self.consume('=');
 
-        self.consumeWhitespace();
         const value = try self.consumeValue();
+        errdefer {
+            value.deinit(self.allocator);
+            self.allocator.destroy(value);
+        }
 
+        self.consumeWhitespace();
         try self.consume(',');
 
-        const ptr = try self.allocator.create(Value);
-        ptr.* = value;
-        const field: Struct.StructField = .{ .name = name, .value = ptr };
+        const field: Struct.StructField = .{ .name = name, .value = value };
         try fields.append(field);
 
         self.consumeWhitespace();
     }
+    try self.consume('}');
 
-    return .{ .@"struct" = .{ .fields = fields.items } };
+    const f = try self.allocator.dupe(Struct.StructField, fields.items);
+    const s = Struct.init(f);
+
+    return Value.structValue(s);
 }
 
 fn consumeString(self: *Self) !Value {
     const start = self.index;
+    try self.consume('"');
 
     var state: enum { normal, escaped, end } = .normal;
     while (state != .end) {
@@ -120,7 +164,8 @@ fn consumeString(self: *Self) !Value {
             else => unreachable,
         }
     }
-    return .{ .string = try self.allocator.dupe(u8, self.buf[start..self.index]) };
+    const s = try self.allocator.dupe(u8, self.buf[start..self.index]);
+    return Value.stringValue(s);
 }
 
 fn consumeNumber(self: *Self) !Value {
@@ -161,7 +206,10 @@ fn consumeIdent(self: *Self) ![]const u8 {
 
             break :blk self.buf[start..self.index];
         },
-        else => error.UnexpectedToken,
+        else => |c| blk: {
+            std.log.warn("Expected {c} but found {c}, {d}\n", .{ '.', c, self.index });
+            break :blk error.UnexpectedToken;
+        },
     };
 }
 
@@ -175,7 +223,7 @@ fn consumeWhitespace(self: *Self) void {
 }
 
 /// Consume the expected character or return error if its not found
-fn consume(self: *Self, expected: u8) !void {
+pub fn consume(self: *Self, expected: u8) !void {
     if (self.peek(0) != expected) {
         std.log.warn("Expected {c} but found {c}\n", .{ expected, self.peek(0) });
         return error.UnexpectedToken;
