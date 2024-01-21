@@ -1,0 +1,15 @@
+{
+  name = "zonfig",
+  version = "0.1.0",
+  files = [
+    "src/field.zig",
+    "src/Lexer.zig",
+    "src/main.zig",
+    "src/root.zig",
+    "src/Tree.zig",
+  ],
+  cmd = {
+    run = "run",
+    test = "test",
+  },
+}

@@ -2,6 +2,26 @@ const std = @import("std");
 
 pub const Tree = @import("./Tree.zig");
 
+test "from file" {
+    const allocator = std.testing.allocator;
+    const expect = std.testing.expect;
+    const eql = std.mem.eql;
+
+    const file = try std.fs.cwd().openFile("config.zf", .{ .mode = .read_only });
+    defer file.close();
+
+    const contents = try file.readToEndAlloc(allocator, 4096);
+    defer allocator.free(contents);
+
+    var tree = try Tree.init(allocator, contents);
+    defer tree.deinit();
+
+    try expect(eql(u8, "zonfig", tree.field("name").?.string));
+    try expect(eql(u8, "0.1.0", tree.field("version").?.string));
+    try expect(eql(u8, "src/field.zig", tree.field("files").?.at(0).?.string));
+    try expect(eql(u8, "run", tree.field("cmd").?.field("run").?.string));
+}
+
 test "struct tests" {
     const allocator = std.testing.allocator;
     const expect = std.testing.expect;
@@ -15,7 +35,7 @@ test "struct tests" {
     defer tree.deinit();
 
     try expect(tree.field("foo").?.int == 67);
-    try expect(tree.field("bar").?.array.inners.items[1].int == 34);
+    try expect(tree.field("bar").?.at(1).?.int == 34);
 }
 
 test "array tests" {
