@@ -134,13 +134,16 @@ fn consumeStruct(self: *Self) !Value {
 }
 
 fn consumeString(self: *Self) !Value {
-    const start = self.index;
+    // const start = self.index;
     try self.consume('"');
+    var list = std.ArrayList(u8).init(self.allocator);
+    defer list.deinit();
 
     var state: enum { normal, escaped, end } = .normal;
     while (state != .end) {
         switch (state) {
             .normal => switch (self.peek(0)) {
+                255 => return error.UnterminatedString,
                 '"' => {
                     try self.consume('"');
                     state = .end;
@@ -149,21 +152,23 @@ fn consumeString(self: *Self) !Value {
                     try self.consume('\\');
                     state = .escaped;
                 },
-                else => _ = self.next(),
+                else => try list.append(self.next()),
             },
             .escaped => {
-                switch (self.peek(0)) {
-                    't', 'n', '\\', '"', '\'' => |ch| {
-                        try self.consume(ch);
-                        state = .normal;
-                    },
+                try list.append(switch (self.peek(0)) {
+                    't' => '\t',
+                    'n' => '\n',
+                    '\\', '"', '\'' => |ch| ch,
                     else => return error.UnexpectedToken,
-                }
+                });
+                _ = self.next();
+                state = .normal;
             },
             else => unreachable,
         }
     }
-    const s = try self.allocator.dupe(u8, self.buf[start..self.index]);
+    // const s = try self.allocator.dupe(u8, self.buf[start..self.index]);
+    const s = try self.allocator.dupe(u8, list.items);
     return Value.stringValue(s);
 }
 
