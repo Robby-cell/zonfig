@@ -112,9 +112,18 @@ pub const Struct = struct {
 
     pub fn init(allocator: Allocator, fields: []StructField) anyerror!Struct {
         var map = std.StringHashMap(*Value).init(allocator);
-        errdefer map.deinit();
+        errdefer {
+            var iter = map.iterator();
+            while (iter.next()) |pair| {
+                allocator.free(pair.key_ptr.*);
+                pair.value_ptr.*.deinit(allocator);
+                allocator.destroy(pair.value_ptr.*);
+            }
+            map.deinit();
+        }
         for (fields) |field| {
-            try map.put(field.name, field.value);
+            const name = try allocator.dupe(u8, field.name);
+            try map.put(name, field.value);
         }
         return .{
             .fields = map,
@@ -128,6 +137,7 @@ pub const Struct = struct {
     pub fn deinit(self: *Struct, allocator: Allocator) void {
         var iter = self.fields.iterator();
         while (iter.next()) |f| {
+            allocator.free(f.key_ptr.*);
             f.value_ptr.*.deinit(allocator);
             allocator.destroy(f.value_ptr.*);
         }

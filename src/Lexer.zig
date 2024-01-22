@@ -26,6 +26,8 @@ pub inline fn good(self: *Self) bool {
 }
 
 pub fn nextField(self: *Self) !Field {
+    self.consumeWhitespace();
+
     const field_ident = try self.consumeIdent();
 
     try self.desire('=');
@@ -62,6 +64,16 @@ pub fn consumeValue(self: *Self) anyerror!*Value {
     return ptr;
 }
 
+fn checkForComment(self: *Self) void {
+    if (self.peek(0) == '#') {
+        // comment
+        while (self.peek(0) != '\n') {
+            _ = self.consume(self.peek(0)) catch unreachable;
+        }
+        self.consumeWhitespace();
+    }
+}
+
 fn consumeArray(self: *Self) anyerror!Value {
     try self.consume('[');
     self.consumeWhitespace();
@@ -76,6 +88,7 @@ fn consumeArray(self: *Self) anyerror!Value {
     }
 
     while (self.peek(0) != ']') {
+        self.checkForComment();
         const value = try self.consumeValue();
         errdefer {
             value.deinit(self.allocator);
@@ -106,6 +119,8 @@ fn consumeStruct(self: *Self) !Value {
     }
 
     while (self.peek(0) != '}') {
+        self.checkForComment();
+
         const name = try self.consumeIdent();
 
         try self.desire('=');

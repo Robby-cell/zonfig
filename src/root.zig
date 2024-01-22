@@ -7,14 +7,18 @@ test "from file" {
     const expect = std.testing.expect;
     const eql = std.mem.eql;
 
-    const file = try std.fs.cwd().openFile("config.zf", .{ .mode = .read_only });
-    defer file.close();
+    const contents = blk: {
+        const file = try std.fs.cwd().openFile("config.zf", .{ .mode = .read_only });
+        defer file.close();
 
-    const contents = try file.readToEndAlloc(allocator, 4096);
-    defer allocator.free(contents);
+        const contents = try file.readToEndAlloc(allocator, 4096);
+        break :blk contents;
+    };
+    // defer allocator.free(contents);
 
     var tree = try Tree.init(allocator, contents);
     defer tree.deinit();
+    allocator.free(contents);
 
     try expect(eql(u8, "zonfig", tree.field("name").?.string));
     try expect(eql(u8, "0.1.0", tree.field("version").?.string));

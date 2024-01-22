@@ -1,6 +1,10 @@
 {
+  # name of the project
   name = "zonfig",
+  # version
   version = "0.1.0",
+
+  # files associated with the project
   files = [
     "src/field.zig",
     "src/Lexer.zig",
@@ -8,6 +12,8 @@
     "src/root.zig",
     "src/Tree.zig",
   ],
+
+  # commands available
   cmd = {
     run = "run",
     test = "test",
