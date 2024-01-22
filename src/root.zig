@@ -22,6 +22,7 @@ test "from file" {
 
     try expect(eql(u8, "zonfig", tree.field("name").?.string));
     try expect(eql(u8, "0.1.0", tree.field("version").?.string));
+    try expect(2024 == tree.field("year").?.int);
     try expect(eql(u8, "src/field.zig", tree.field("files").?.at(0).?.string));
     try expect(eql(u8, "run", tree.field("cmd").?.field("run").?.string));
 }

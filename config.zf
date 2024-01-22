@@ -3,6 +3,8 @@
   name = "zonfig",
   # version
   version = "0.1.0",
+  # year of creation
+  year = 2024,
 
   # files associated with the project
   files = [
