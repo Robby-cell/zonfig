@@ -123,6 +123,7 @@ pub const Struct = struct {
         }
         for (fields) |field| {
             const name = try allocator.dupe(u8, field.name);
+            errdefer allocator.free(name);
             try map.put(name, field.value);
         }
         return .{
