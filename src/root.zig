@@ -29,6 +29,35 @@ test "from file" {
     try expect(eql(u8, "run", tree.field("cmd").?.field("run").?.string));
 }
 
+test "cant assign to ident" {
+    const allocator = std.testing.allocator;
+
+    if (Zonfig.init(allocator,
+        \\{
+        \\  foo = bar,
+        \\}
+    )) |_| {
+        unreachable;
+    } else |_| {
+        // passed
+    }
+}
+
+test "missing comma" {
+    const allocator = std.testing.allocator;
+
+    if (Zonfig.init(allocator,
+        \\{
+        \\  foo = 33
+        \\  bar = 34,
+        \\}
+    )) |_| {
+        unreachable;
+    } else |_| {
+        // passed
+    }
+}
+
 test "struct tests" {
     const allocator = std.testing.allocator;
     const expect = std.testing.expect;

@@ -88,9 +88,10 @@ fn array(self: *Self) !Value {
         if (token == .right_bracket) {
             break;
         }
-        if (token == .comma) {
-            token = self.nextToken();
+        if (token != .comma) {
+            return error.ExpectedCommaAfterField;
         }
+        token = self.nextToken();
     }
     return Value.arrayValue(Array.init(items));
 }
@@ -112,24 +113,31 @@ fn @"struct"(self: *Self) !Value {
 
     while (token != .right_curly) {
         const field = if (token == .ident) try self.ident() else return error.ExpectedIdentifier;
-        errdefer self.allocator.free(field);
 
         token = self.nextToken();
         if (token != .eq) {
+            self.allocator.free(field);
             return error.ExpectedEq;
         }
 
-        const value = try self.nextValue();
+        const value = self.nextValue() catch |err| {
+            self.allocator.free(field);
+            return err;
+        };
 
-        try table.put(field, value);
+        table.put(field, value) catch |err| {
+            self.allocator.free(field);
+            return err;
+        };
 
         token = self.nextToken();
         if (token == .right_curly) {
             break;
         }
-        if (token == .comma) {
-            token = self.nextToken();
+        if (token != .comma) {
+            return error.ExpectedCommaAfterField;
         }
+        token = self.nextToken();
     }
 
     return Value.structValue(Struct{ .fields = table });
