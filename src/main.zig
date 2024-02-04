@@ -9,46 +9,25 @@ pub fn main() !void {
     const allocator = gpa.allocator();
 
     var tree = try Tree.init(allocator,
-    // \\{
-    // \\  foo = "Hello world",
-    // \\  bar = 455,
-    // \\  baz = 445.333,
-    // \\  biz = {
-    // \\      foo2 = 44,
-    // \\  },
-    // \\  bez = [
-    // \\      455,
-    // \\      44,
-    // \\      2211,
-    // \\      "Hello",
-    // \\  ],
-    // \\}
-        \\[
-        \\  45,
-        \\  "44",
-        \\  {
-        \\      key = "value",
-        \\  },
-        \\  { },
-        \\  [],
-        \\]
+        \\{
+        \\  value = 56.33,
+        \\  string = "hello world",
+        \\  array = [
+        \\      3,
+        \\      66,
+        \\      11,
+        \\  ],
+        \\  struct = {
+        \\      key = [ 22 ]
+        \\  }
+        \\}
     );
     defer tree.deinit();
-    // var iter = tree.fields.@"struct".fields.iterator();
-    //
-    // while (iter.next()) |pair|
-    //     std.debug.print("{s} = {any}\n", .{ pair.key_ptr.*, pair.value_ptr.* });
+    const writer = std.io.getStdOut().writer();
 
-    for (tree.fields.array.inners.items) |val| {
-        std.debug.print("{any}\n", .{val});
-    }
+    try tree.value.write(writer, 0);
 
-    var parser = Parser.init("{ item = 45, }", allocator);
-    const value = try parser.nextValue();
-    defer {
-        value.deinit(allocator);
-        allocator.destroy(value);
-    }
+    // try value.write(writer, 0);
 
-    std.debug.print("WITH PARSER: {any}\n", .{value.field("item").?.int});
+    // std.debug.print("WITH PARSER: {any}\n", .{value.*});
 }

@@ -7,6 +7,7 @@ const TokenType = Token.TokenType;
 const _field = @import("field.zig");
 const Value = _field.Value;
 const Struct = _field.Struct;
+const Array = _field.Array;
 
 const Self = @This();
 
@@ -16,10 +17,7 @@ allocator: Allocator,
 
 pub fn init(buffer: []const u8, allocator: Allocator) Self {
     return .{
-        .lexer = .{
-            .buf = buffer,
-            .allocator = allocator,
-        },
+        .lexer = .{ .buf = buffer },
         .current = null,
         .allocator = allocator,
     };
@@ -36,7 +34,7 @@ pub fn nextValue(self: *Self) anyerror!*Value {
         .left_bracket => try self.array(),
         .left_curly => try self.@"struct"(),
 
-        else => self.@"error"(),
+        else => try self.@"error"(),
     };
     errdefer value.deinit(self.allocator);
 
@@ -52,14 +50,49 @@ pub fn nextToken(self: *Self) TokenType {
     return token.type;
 }
 
-fn @"error"(self: *Self) Value {
-    _ = self;
-    @panic("not implemented");
+fn @"error"(self: *Self) !Value {
+    std.debug.print("ERROR: {s}\n", .{self.lexer.buf[self.current.?.position.start - 1 .. self.current.?.position.end + 1]});
+    return error.InvalidToken;
 }
 
 fn array(self: *Self) !Value {
-    _ = self;
-    @panic("unimplemented");
+    var token = self.nextToken();
+    var items = std.ArrayList(*Value).init(self.allocator);
+    errdefer {
+        for (items.items) |item| {
+            item.deinit(self.allocator);
+        }
+        items.deinit();
+    }
+
+    while (token != .right_bracket) {
+        var next_value = switch (token) {
+            .int => try self.integer(),
+            .float => self.float(),
+            .string => try self.string(),
+            .left_curly => try self.@"struct"(),
+            .left_bracket => try self.array(),
+            else => return error.InvalidArrayField,
+        };
+
+        errdefer {
+            next_value.deinit(self.allocator);
+        }
+
+        const ptr = try self.allocator.create(Value);
+        errdefer self.allocator.destroy(ptr);
+        ptr.* = next_value;
+        try items.append(ptr);
+
+        token = self.nextToken();
+        if (token == .right_bracket) {
+            break;
+        }
+        if (token == .comma) {
+            token = self.nextToken();
+        }
+    }
+    return Value.arrayValue(Array.init(items));
 }
 
 fn @"struct"(self: *Self) !Value {
@@ -98,7 +131,6 @@ fn @"struct"(self: *Self) !Value {
             token = self.nextToken();
         }
     }
-    _ = self.nextToken();
 
     return Value.structValue(Struct{ .fields = table });
 }
@@ -126,7 +158,7 @@ fn string(self: *Self) !Value {
     var list = std.ArrayList(u8).init(self.allocator);
     defer list.deinit();
 
-    var position: usize = token.position.start;
+    var position: usize = token.position.start + 1;
     while (position < token.position.end) {
         switch (self.lexer.buf[position]) {
             0 => {},
