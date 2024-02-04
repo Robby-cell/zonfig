@@ -77,6 +77,48 @@ pub const Value = union(enum) {
             else => {},
         }
     }
+
+    pub fn write(self: *const Value, writer: anytype, indent: usize) !void {
+        switch (self.*) {
+            .string => |s| {
+                try writer.print("{s}", .{s});
+            },
+            .int => |i| try writer.print("{d}", .{i}),
+            .float => |f| try writer.print("{}", .{f}),
+
+            .@"struct" => |s| {
+                try writer.print("{{\n", .{});
+
+                var iter = s.fields.iterator();
+                while (iter.next()) |pair| {
+                    for (0..indent + 1) |_| {
+                        try writer.print("  ", .{});
+                    }
+                    try pair.value_ptr.*.write(writer, indent + 1);
+                    try writer.print("\n", .{});
+                }
+                for (0..indent) |_| {
+                    try writer.print("  ", .{});
+                }
+                try writer.print("}}", .{});
+            },
+            .array => |a| {
+                try writer.print("[\n", .{});
+                for (a.inners.items) |item| {
+                    for (0..indent + 1) |_| {
+                        try writer.print("  ", .{});
+                    }
+                    try item.write(writer, indent + 1);
+                    try writer.print("\n", .{});
+                }
+                for (0..indent) |_| {
+                    try writer.print("  ", .{});
+                }
+
+                try writer.print("]", .{});
+            },
+        }
+    }
 };
 
 pub const Array = struct {

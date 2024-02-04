@@ -14,11 +14,13 @@ test "from file" {
         const contents = try file.readToEndAlloc(allocator, 4096);
         break :blk contents;
     };
-    // defer allocator.free(contents);
+    defer allocator.free(contents);
 
-    var tree = try Tree.init(allocator, contents);
+    var tree = Tree.init(allocator, contents) catch |err| {
+        std.log.warn("ERROR: {any}\n", .{err});
+        return err;
+    };
     defer tree.deinit();
-    allocator.free(contents);
 
     try expect(eql(u8, "zonfig", tree.field("name").?.string));
     try expect(eql(u8, "0.1.0", tree.field("version").?.string));
