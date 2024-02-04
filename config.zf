@@ -12,12 +12,14 @@
     "src/Lexer.zig",
     "src/main.zig",
     "src/root.zig",
-    "src/Tree.zig",
+    "src/Zonfig.zig",
+    "src/Parser.zig",
+    "src/Token.zig"
   ],
 
   # commands available
   cmd = {
     run = "run",
     test = "test",
-  },
+  }
 }
