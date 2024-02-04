@@ -7,6 +7,8 @@ const Parser = @import("Parser.zig");
 const Field = @import("./field.zig").Field;
 const Value = @import("./field.zig").Value;
 
+pub const Token = @import("Token.zig");
+
 const Self = @This();
 
 value: *Value,

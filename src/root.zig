@@ -1,6 +1,6 @@
 const std = @import("std");
 
-pub const Tree = @import("./Tree.zig");
+pub const Zonfig = @import("zonfig");
 
 test "from file" {
     const allocator = std.testing.allocator;
@@ -16,7 +16,7 @@ test "from file" {
     };
     defer allocator.free(contents);
 
-    var tree = Tree.init(allocator, contents) catch |err| {
+    var tree = Zonfig.init(allocator, contents) catch |err| {
         std.log.warn("ERROR: {any}\n", .{err});
         return err;
     };
@@ -33,7 +33,7 @@ test "struct tests" {
     const allocator = std.testing.allocator;
     const expect = std.testing.expect;
 
-    var tree = try Tree.init(allocator,
+    var tree = try Zonfig.init(allocator,
         \\{
         \\  foo = 67,
         \\  bar = [ 12, 34, ],
@@ -49,7 +49,7 @@ test "array tests" {
     const allocator = std.testing.allocator;
     const expect = std.testing.expect;
 
-    var tree = try Tree.init(allocator,
+    var tree = try Zonfig.init(allocator,
         \\[
         \\  1,
         \\  2,
@@ -71,7 +71,7 @@ test "strings in structs" {
     const allocator = std.testing.allocator;
     const expect = std.testing.expect;
 
-    var tree = try Tree.init(allocator,
+    var tree = try Zonfig.init(allocator,
         \\{
         \\  foo = "Hello world\nnew line",
         \\}

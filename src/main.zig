@@ -1,7 +1,6 @@
 const std = @import("std");
 
-const Tree = @import("./root.zig").Tree;
-const Parser = @import("Parser.zig");
+const Tree = @import("zonfig");
 
 pub fn main() !void {
     var gpa: std.heap.GeneralPurposeAllocator(.{}) = .{};

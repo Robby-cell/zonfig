@@ -5,6 +5,8 @@ pub fn build(b: *std.Build) void {
 
     const optimize = b.standardOptimizeOption(.{});
 
+    const zonfig = b.addModule("zonfig", .{ .root_source_file = .{ .path = "src/Zonfig.zig" } });
+
     const lib = b.addStaticLibrary(.{
         .name = "zonfig",
 
@@ -12,6 +14,7 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
+    lib.root_module.addImport("zonfig", zonfig);
 
     b.installArtifact(lib);
 
@@ -22,6 +25,7 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
+    exe.root_module.addImport("zonfig", zonfig);
     b.installArtifact(exe);
 
     const run_cmd = b.addRunArtifact(exe);
@@ -40,6 +44,7 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
+    lib_unit_tests.root_module.addImport("zonfig", zonfig);
 
     const run_lib_unit_tests = b.addRunArtifact(lib_unit_tests);
 
@@ -48,6 +53,7 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
+    exe_unit_tests.root_module.addImport("zonfig", zonfig);
 
     const run_exe_unit_tests = b.addRunArtifact(exe_unit_tests);
 
