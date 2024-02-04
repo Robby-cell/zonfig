@@ -42,4 +42,13 @@ pub fn main() !void {
     for (tree.fields.array.inners.items) |val| {
         std.debug.print("{any}\n", .{val});
     }
+
+    var parser = Parser.init("{ item = 45, }", allocator);
+    const value = try parser.nextValue();
+    defer {
+        value.deinit(allocator);
+        allocator.destroy(value);
+    }
+
+    std.debug.print("WITH PARSER: {any}\n", .{value.field("item").?.int});
 }

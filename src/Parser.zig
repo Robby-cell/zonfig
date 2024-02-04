@@ -16,31 +16,32 @@ allocator: Allocator,
 
 pub fn init(buffer: []const u8, allocator: Allocator) Self {
     return .{
-        .lexer = .{ .buf = buffer },
+        .lexer = .{
+            .buf = buffer,
+            .allocator = allocator,
+        },
         .current = null,
         .allocator = allocator,
     };
 }
 
-pub fn nextValue(self: *Self) !*Value {
-    const ptr = try self.allocator.create(Value);
-    errdefer {
-        ptr.deinit(self.allocator);
-        self.allocator.destroy(ptr);
-    }
-
-    ptr.* = switch (self.nextToken()) {
-        .ident => try self.ident(),
+pub fn nextValue(self: *Self) anyerror!*Value {
+    var value = switch (self.nextToken()) {
+        .ident => return error.IdentIsNotValidValue,
 
         .string => try self.string(),
         .int => try self.integer(),
         .float => self.float(),
 
-        .left_bracket => self.array(),
-        .left_curly => self.@"struct"(),
+        .left_bracket => try self.array(),
+        .left_curly => try self.@"struct"(),
 
         else => self.@"error"(),
     };
+    errdefer value.deinit(self.allocator);
+
+    const ptr = try self.allocator.create(Value);
+    ptr.* = value;
 
     return ptr;
 }
@@ -51,11 +52,21 @@ pub fn nextToken(self: *Self) TokenType {
     return token.type;
 }
 
+fn @"error"(self: *Self) Value {
+    _ = self;
+    @panic("not implemented");
+}
+
+fn array(self: *Self) !Value {
+    _ = self;
+    @panic("unimplemented");
+}
+
 fn @"struct"(self: *Self) !Value {
     // move past the l paren
 
     var token = self.nextToken();
-    const table = std.StringHashMap(*Value).init(self.allocator);
+    var table = std.StringHashMap(*Value).init(self.allocator);
     errdefer {
         var iter = table.iterator();
         while (iter.next()) |pair| {
@@ -67,8 +78,8 @@ fn @"struct"(self: *Self) !Value {
     }
 
     while (token != .right_curly) {
-        const field = if (token.type == .ident) try self.ident() else return error.ExpectedIdentifier;
-        errdefer field.deinit(self.allocator);
+        const field = if (token == .ident) try self.ident() else return error.ExpectedIdentifier;
+        errdefer self.allocator.free(field);
 
         token = self.nextToken();
         if (token != .eq) {
@@ -122,13 +133,15 @@ fn string(self: *Self) !Value {
             '"' => break,
             '\\' => {
                 position += 1;
+                if (position >= token.position.end) {
+                    return error.UnterminatedString;
+                }
+
                 try list.append(switch (self.lexer.buf[position]) {
                     't' => '\t',
                     'n' => '\n',
-                    '\\' => '\\',
                     'r' => '\r',
-                    '"' => '"',
-                    '\'' => '\'',
+                    '\\', '"', '\'' => |c| c,
                     else => return error.InvalidEscapeSequence,
                 });
             },

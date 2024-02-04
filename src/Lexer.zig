@@ -33,6 +33,7 @@ pub fn nextToken(self: *Self) Token {
     return switch (self.peek(0)) {
         'a'...'z', 'A'...'Z', '_' => self.ident(),
         '0'...'9' => self.number(),
+        '"' => self.string(),
         else => |c| blk: {
             defer _ = self.next();
             break :blk .{
@@ -52,6 +53,34 @@ pub fn nextToken(self: *Self) Token {
                 },
             };
         },
+    };
+}
+
+fn string(self: *Self) Token {
+    _ = self.next();
+    while (self.peek(0) != '"') {
+        switch (self.peek(0)) {
+            0, 255 => return Token{
+                .position = .{
+                    .start = self.current.index,
+                    .end = self.index,
+                    .line = self.current.line,
+                },
+                .type = .@"error",
+            },
+            '\\' => _ = self.next(),
+            else => {},
+        }
+        _ = self.next();
+    }
+    _ = self.next();
+    return .{
+        .position = .{
+            .start = self.current.index,
+            .end = self.index,
+            .line = self.current.line,
+        },
+        .type = .string,
     };
 }
 
