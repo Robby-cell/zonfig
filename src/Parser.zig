@@ -27,8 +27,8 @@ pub fn nextValue(self: *Self) !*Value {
     ptr.* = switch (self.nextToken()) {
         .ident => try self.ident(),
 
-        .string => self.string(),
-        .int => self.integer(),
+        .string => try self.string(),
+        .int => try self.integer(),
         .float => self.float(),
 
         .left_bracket => self.array(),
@@ -44,6 +44,23 @@ pub fn nextToken(self: *Self) TokenType {
     const token = self.lexer.nextToken();
     self.current = token;
     return token.type;
+}
+
+fn float(self: *Self) Value {
+    const token = self.current.?;
+    const number = self.lexer.buf[token.position.start..token.position.end];
+    const numerical_value = std.fmt.parseFloat(f64, number) catch unreachable;
+    return Value.floatValue(numerical_value);
+}
+
+fn integer(self: *Self) !Value {
+    const token = self.current.?;
+    const number = self.lexer.buf[token.position.start..token.position.end];
+    const numerical_value = std.fmt.parseInt(i64, number, 10) catch |err| {
+        std.log.warn("{any}\n", .{err});
+        return err;
+    };
+    return Value.intValue(numerical_value);
 }
 
 fn string(self: *Self) !Value {
