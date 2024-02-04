@@ -1,13 +1,13 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
 
-const Lexer = @import("./Lexer.zig");
+const Lexer = @import("Lexer.zig");
 const Parser = @import("Parser.zig");
 
-const Field = @import("./field.zig").Field;
-const Value = @import("./field.zig").Value;
+const Field = value.Field;
+const Value = value.Value;
 
-pub const Token = @import("Token.zig");
+pub const value = @import("field.zig");
 
 const Self = @This();
 
