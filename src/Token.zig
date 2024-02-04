@@ -19,6 +19,8 @@ pub const TokenType = enum {
 
     eq,
     comma,
+
+    @"error",
 };
 
 pub const Position = struct {

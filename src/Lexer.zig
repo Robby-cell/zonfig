@@ -6,18 +6,89 @@ const Value = @import("./field.zig").Value;
 const Struct = @import("./field.zig").Struct;
 const Array = @import("./field.zig").Array;
 
+const Token = @import("Token.zig");
+const TokenType = Token.TokenType;
+const Position = Token.Position;
+
 const Self = @This();
 
 buf: []const u8,
 index: usize = 0,
+line: usize = 1,
+/// start of this token's position
+current: struct { index: usize, line: usize } = undefined,
 allocator: Allocator,
 
-fn next(self: *Self) u8 {
+inline fn next(self: *Self) u8 {
     if (self.index >= self.buf.len)
         return 255;
 
     defer self.index += 1;
     return self.buf[self.index];
+}
+
+pub fn nextToken(self: *Self) Token {
+    self.consumeWhitespace();
+    self.current = .{ .index = self.index, .line = self.line };
+    return switch (self.peek(0)) {
+        'a'...'z', 'A'...'Z', '_' => self.ident(),
+        '0'...'9' => self.number(),
+        else => |c| blk: {
+            defer _ = self.next();
+            break :blk .{
+                .position = .{
+                    .start = self.current.index,
+                    .end = self.current.index + 1,
+                    .line = self.current.line,
+                },
+                .type = switch (c) {
+                    '[' => .left_bracket,
+                    ']' => .right_bracket,
+                    '{' => .left_curly,
+                    '}' => .right_curly,
+                    '=' => .eq,
+                    ',' => .comma,
+                    else => .@"error",
+                },
+            };
+        },
+    };
+}
+
+fn ident(self: *Self) Token {
+    while (std.ascii.isAlphanumeric(self.peek(0)) or self.peek(0) == '_') {
+        _ = self.next();
+    }
+
+    return .{
+        .position = .{
+            .start = self.current.index,
+            .end = self.index,
+            .line = self.current.line,
+        },
+        .type = .ident,
+    };
+}
+fn number(self: *Self) Token {
+    var @"type": TokenType = .int;
+    while (std.ascii.isDigit(self.peek(0))) {
+        _ = self.next();
+    }
+    if (self.peek(0) == '.') {
+        _ = self.next();
+        while (std.ascii.isDigit(self.peek(0))) {
+            _ = self.next();
+        }
+        @"type" = .float;
+    }
+    return .{
+        .position = .{
+            .start = self.current.index,
+            .end = self.index,
+            .line = self.current.line,
+        },
+        .type = @"type",
+    };
 }
 
 pub inline fn good(self: *Self) bool {
