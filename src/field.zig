@@ -94,6 +94,7 @@ pub const Value = union(enum) {
                     for (0..indent + 1) |_| {
                         try writer.print("  ", .{});
                     }
+                    try writer.print("{s} = ", .{pair.key_ptr.*});
                     try pair.value_ptr.*.write(writer, indent + 1);
                     try writer.print("\n", .{});
                 }

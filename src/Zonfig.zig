@@ -29,7 +29,12 @@ pub fn at(self: *const Self, index: usize) ?*Value {
     return self.value.at(index);
 }
 
-pub fn deinit(self: *Self) void {
+pub fn deinit(self: *const Self) void {
     self.value.deinit(self.allocator);
     self.allocator.destroy(self.value);
+}
+
+pub fn print(self: *const Self) !void {
+    const writer = std.io.getStdOut().writer();
+    try self.value.write(writer, 0);
 }
