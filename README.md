@@ -1,5 +1,3 @@
 # zonfig
 
-TODO:
-
-+ Split `src/Lexer.zig` into a lexical stage, and a parsing stage
+Simply add it to `build.zig.zon` and import it.
